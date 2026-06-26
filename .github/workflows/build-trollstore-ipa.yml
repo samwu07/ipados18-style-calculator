@@ -1,0 +1,57 @@
+name: Build TrollStore IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build iPad app without Apple signing
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project iPadOS18StyleCalculator.xcodeproj \
+            -scheme iPadOS18StyleCalculator \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package IPA
+        run: |
+          set -euo pipefail
+          APP_PATH="$(find build/DerivedData/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -type d | head -n 1)"
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app found"
+            exit 1
+          fi
+
+          rm -rf build/Payload build/ipa
+          mkdir -p build/Payload build/ipa
+          cp -R "$APP_PATH" build/Payload/
+          ditto -c -k --keepParent build/Payload build/ipa/iPadOS18StyleCalculator-TrollStore.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: iPadOS18StyleCalculator-TrollStore-IPA
+          path: build/ipa/iPadOS18StyleCalculator-TrollStore.ipa
+          if-no-files-found: error
