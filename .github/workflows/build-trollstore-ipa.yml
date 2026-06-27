@@ -19,6 +19,24 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      - name: Patch compact layout safety
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('iPadOS18StyleCalculator/CalculatorApp.swift')
+          s = p.read_text()
+          s = s.replace('let scroll = sci && (!wide || g.size.height < 780)', 'let targetH: CGFloat = sci ? (wide ? 70 : 76) : (wide ? (narrow ? 78 : 112) : (narrow ? 78 : 96))\n            let scroll = keyH < targetH - 1 || (!wide && narrow) || (sci && !wide) || g.size.height < 760')
+          s = s.replace('f.numberStyle=.decimal', 'f.numberStyle = .decimal')
+          s = s.replace('f.usesGroupingSeparator=true', 'f.usesGroupingSeparator = true')
+          s = s.replace('f.groupingSeparator=","', 'f.groupingSeparator = ","')
+          s = s.replace('f.maximumFractionDigits=10', 'f.maximumFractionDigits = 10')
+          s = s.replace('f.maximumFractionDigits=8', 'f.maximumFractionDigits = 8')
+          s = s.replace('f.maximumFractionDigits=2', 'f.maximumFractionDigits = 2')
+          s = s.replace('f.minimumFractionDigits=2', 'f.minimumFractionDigits = 2')
+          p.write_text(s)
+          PY
+
       - name: Build iPad app without Apple signing
         run: |
           set -euo pipefail
